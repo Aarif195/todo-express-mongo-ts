@@ -63,7 +63,6 @@ export async function register(req: Request, res: Response) {
   }
 }
 
-
 // LOGIN
 export async function login(req: Request, res: Response) {
   try {

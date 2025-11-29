@@ -1,4 +1,6 @@
 import express, { Request, Response } from "express";
+import { authenticate } from "../middleware/authenticate";
+
 import { createArticle } from "../controllers/articleController";
 
 const router = express.Router();
@@ -8,7 +10,7 @@ router.get("/", (req: Request, res: Response) => {
 });
 
 
-router.post("/articles", createArticle);
+router.post("/", authenticate, upload, createArticle);
 
 
 export default router;

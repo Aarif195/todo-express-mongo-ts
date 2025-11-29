@@ -5,7 +5,6 @@ import { ObjectId } from "mongodb";
 import {sendError,  hashPassword , getUsersCollection} from "../utils/helpers";
 import { getDb } from "../config/db";
 
-
 // const db = getDb();
 // const tasksCollection = db.collection("tasks");
 
