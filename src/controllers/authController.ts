@@ -63,7 +63,46 @@ export async function register(req: Request, res: Response) {
   }
 }
 
-export async function login(req:Request, res:Response)  {
 
+// LOGIN
+export async function login(req: Request, res: Response) {
+  try {
+    const { email, password }: { email: string; password: string } = req.body;
+
+    // Validate required fields
+    if (!email || !password)
+      return sendError(res, "Email and password are required");
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return sendError(res, "Invalid email format");
+
+    const usersCol = getUsersCollection();
+
+    // Find user by email
+    const user = await usersCol.findOne({ email });
+
+    if (!user || user.password !== hashPassword(password)) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Generate a new token for current login
+    const token = crypto.randomBytes(24).toString("hex");
+
+    // Update token in MongoDB
+    await usersCol.updateMany({}, { $unset: { token: "" } }); // remove old tokens
+    await usersCol.updateOne({ _id: user._id }, { $set: { token } }); // set new token for current user
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: { id: user._id, username: user.username, email: user.email },
+    });
+  } catch (err) {
+    console.error(err);
+    sendError(res, "Server error");
+  }
 }
+
 
