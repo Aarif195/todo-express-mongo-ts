@@ -188,3 +188,26 @@ export const toggleTaskCompletion = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+// GET TASK BY ID
+export const getTaskById = async (req: Request, res: Response) => {
+  try {
+    const idStr = req.params.id;
+
+    if (!ObjectId.isValid(idStr)) {
+      return res.status(400).json({ message: "Invalid ID" });
+    }
+
+    const tasksCol = getTasksCollection();
+    const task = await tasksCol.findOne({ _id: new ObjectId(idStr) });
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.status(200).json(task);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
