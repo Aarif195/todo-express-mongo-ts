@@ -70,3 +70,70 @@ export const createTask = async (req: any, res: any) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+// GET TASKS
+export const getTasks = async (req: Request, res: Response) => {
+  try {
+    const tasksCol = getTasksCollection();
+
+    const tasksArray = (await tasksCol.find({}).toArray()) as Todo[];
+
+    tasksArray.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    const queryParams = req.query;
+
+    const page = Math.max(1, parseInt((queryParams.page as string) || "1"));
+    const limit = Math.max(1, parseInt((queryParams.limit as string) || "10"));
+
+    let filteredTasks = [...tasksArray];
+
+    for (const key in queryParams) {
+      const value = String(queryParams[key]).toLowerCase();
+
+      if (key === "search") {
+        filteredTasks = filteredTasks.filter(
+          (task) =>
+            task.title.toLowerCase().includes(value) ||
+            task.description.toLowerCase().includes(value) ||
+            (Array.isArray(task.labels) &&
+              task.labels.some((label) => label.toLowerCase().includes(value)))
+        );
+      } else if (key === "labels") {
+        filteredTasks = filteredTasks.filter(
+          (task) =>
+            Array.isArray(task.labels) &&
+            task.labels.map((label) => label.toLowerCase()).includes(value)
+        );
+      } else if (key === "status" && allowedStatuses.includes(value)) {
+        filteredTasks = filteredTasks.filter((task) => task.status === value);
+      } else if (key === "priority" && allowedPriorities.includes(value)) {
+        filteredTasks = filteredTasks.filter((task) => task.priority === value);
+      } else if (key === "completed") {
+        const isCompleted = value === "true";
+        filteredTasks = filteredTasks.filter(
+          (task) => task.completed === isCompleted
+        );
+      }
+    }
+
+    const totalData = filteredTasks.length;
+    const totalPages = totalData === 0 ? 0 : Math.ceil(totalData / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const dataSlice = filteredTasks.slice(startIndex, endIndex);
+
+    return res.status(200).json({
+      totalData,
+      totalPages,
+      currentPage: page,
+      limit,
+      data: dataSlice,
+    });
+  } catch (err) {
+    console.error(err);
+    return sendError(res, "Server error");
+  }
+};
