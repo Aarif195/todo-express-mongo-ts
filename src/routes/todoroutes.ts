@@ -7,8 +7,6 @@ import { createTask, getTasks } from "../controllers/articleController";
 const router = express.Router();
 
 
-
-
 router.post("/", authenticate, upload, createTask);
 router.get("/", getTasks);
 

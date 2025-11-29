@@ -4,7 +4,7 @@ import { User } from "../types/todo";
 
 // AUTHENTICATION
 
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request {
   user?: User;
 }
 
@@ -16,6 +16,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
   if (parts.length !== 2 || parts[0] !== "Bearer") {
     return res.status(401).json({ message: "Unauthorized" });
   }
+  
 
   const token = parts[1];
 
