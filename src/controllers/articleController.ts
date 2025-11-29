@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import { authenticate } from "../middleware/authenticate";
 import { Todo, Reply, Comment, User } from "../types/todo";
 import { ObjectId } from "mongodb";
 import {sendError,  hashPassword , getUsersCollection} from "../utils/helpers";
