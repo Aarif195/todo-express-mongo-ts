@@ -2,11 +2,12 @@ import express, { Request, Response } from "express";
 import { authenticate } from "../middleware/authenticate";
 import { upload } from "../middleware/upload";
 
-import { createTask, getTasks, getTaskById, updateTask, deleteTask , likeTask, postTaskComment, replyTaskComment, getTaskComments} from "../controllers/articleController";
+import { createTask, getTasks, getTaskById, updateTask, deleteTask , likeTask, postTaskComment, replyTaskComment, getTaskComments, getMyTasks} from "../controllers/articleController";
 
 const router = express.Router();
 
 router.post("/", authenticate, upload, createTask);
+router.get('/my', authenticate, getMyTasks);
 router.get("/", getTasks);
 router.get("/:id", getTaskById);
 router.put("/:id", authenticate, updateTask);

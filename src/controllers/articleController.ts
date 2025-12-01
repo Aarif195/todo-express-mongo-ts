@@ -556,3 +556,92 @@ export const getTaskComments = async (
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// GET TASKS CREATED BY THE LOGGED-IN USER
+export const getMyTasks = async (req: AuthRequest, res: Response) => {
+  try {
+
+    const user = req.user;
+    if (!user) return sendError(res, "Unauthorized");
+
+    const tasksCol = getTasksCollection();
+
+    // Fetch all tasks created by this user
+    //  user's ID
+    const baseQuery = { userId: user._id };
+    
+    // fetching all data initially to support the client-side sorting and filtering logic below.
+    const tasksArray = (await tasksCol
+      .find(baseQuery)
+      .toArray()) as Todo[];
+
+    //  Sort newest first 
+    tasksArray.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    //  Parse query parameters 
+    const queryParams = req.query;
+
+    const page = Math.max(1, parseInt(queryParams.page?.toString() || "1"));
+    const limit = Math.max(1, parseInt(queryParams.limit?.toString() || "10"));
+
+    //  Apply filters 
+    let filteredTasks = [...tasksArray];
+
+    for (const key in queryParams) {
+      // Ensure value is treated as string for comparison
+      const value = queryParams[key]?.toString().toLowerCase() || "";
+
+      if (key === "search") {
+        filteredTasks = filteredTasks.filter(
+          (task) =>
+            task.title.toLowerCase().includes(value) ||
+            task.description.toLowerCase().includes(value) ||
+            (Array.isArray(task.labels) &&
+              task.labels.some((label) => label.toLowerCase().includes(value)))
+        );
+      } else if (key === "labels") {
+        filteredTasks = filteredTasks.filter(
+          (task) =>
+            Array.isArray(task.labels) &&
+            task.labels.map((l) => l.toLowerCase()).includes(value)
+        );
+      } else if (key === "status") {
+      
+          filteredTasks = filteredTasks.filter((task) => task.status === value);
+    
+      } else if (key === "priority") {
+      
+          filteredTasks = filteredTasks.filter((task) => task.priority === value);
+        // }
+      } else if (key === "completed") {
+        const isCompleted = value === "true";
+        filteredTasks = filteredTasks.filter(
+          (task) => task.completed === isCompleted
+        );
+      }
+    }
+
+    //  Pagination
+    const totalData = filteredTasks.length;
+    const totalPages = totalData === 0 ? 0 : Math.ceil(totalData / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const dataSlice = filteredTasks.slice(startIndex, endIndex);
+
+    //  Send response
+    res.status(200).json({
+      totalData,
+      totalPages,
+      currentPage: page,
+      limit,
+      data: dataSlice,
+    });
+  } catch (err) {
+    console.error(err);
+    sendError(res, "Server error");
+  }
+};
