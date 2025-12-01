@@ -243,15 +243,15 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       return sendError(res, "Title cannot be empty");
     if (description !== undefined && description.trim() === "")
       return sendError(res, "Description cannot be empty");
-     if (priority !== undefined && priority.trim() === "")
-  return sendError(res, "Priority cannot be empty");
+    if (priority !== undefined && priority.trim() === "")
+      return sendError(res, "Priority cannot be empty");
     if (priority && !allowedPriorities.includes(priority.toLowerCase()))
       return sendError(res, "Invalid priority");
     if (status !== undefined && status.trim() === "")
-  return sendError(res, "Status cannot be empty");
+      return sendError(res, "Status cannot be empty");
     if (status && !allowedStatuses.includes(status.toLowerCase()))
       return sendError(res, "Invalid status");
-   
+
     if (
       labels &&
       (!Array.isArray(labels) ||
@@ -259,8 +259,7 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
     )
       return sendError(res, "Invalid labels");
 
-
-      // To make Update to the fields
+    // To make Update to the fields
     const updatePayload: Partial<Todo> = {
       title: title !== undefined ? title.trim() : task.title,
       description:
@@ -273,7 +272,10 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       updatedAt: new Date().toISOString(),
     };
 
-    await tasksCol.updateOne({ _id: new ObjectId(taskId) }, { $set: updatePayload });
+    await tasksCol.updateOne(
+      { _id: new ObjectId(taskId) },
+      { $set: updatePayload }
+    );
 
     res.status(200).json({
       message: "Task updated successfully",
@@ -285,17 +287,15 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
   }
 };
 
-
 // DELETE TASK
 export const deleteTask = async (req: AuthRequest, res: Response) => {
   try {
-   
     const user = req.user;
     if (!user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const taskIdStr = req.params.id; 
+    const taskIdStr = req.params.id;
 
     if (!ObjectId.isValid(taskIdStr)) {
       return res.status(400).json({ message: "Invalid task ID" });
@@ -320,13 +320,10 @@ export const deleteTask = async (req: AuthRequest, res: Response) => {
     await tasksCol.deleteOne({ _id: taskId });
 
     res.status(204).end();
-
   } catch (err) {
-  
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 // LIKE TODO TASK
 export const likeTask = async (req: AuthRequest, res: Response) => {
@@ -338,9 +335,9 @@ export const likeTask = async (req: AuthRequest, res: Response) => {
     }
 
     // Task ID from route parameters
-    const taskIdStr = req.params.id; 
+    const taskIdStr = req.params.id;
 
-    //  ObjectId 
+    //  ObjectId
     if (!ObjectId.isValid(taskIdStr)) {
       sendError(res, "Invalid task ID");
       return;
@@ -366,7 +363,9 @@ export const likeTask = async (req: AuthRequest, res: Response) => {
     // Toggle like
     let message = "";
     let liked = false;
-    const likedBy: ObjectId[] = Array.isArray(task.likedBy) ? (task.likedBy as ObjectId[]) : [];
+    const likedBy: ObjectId[] = Array.isArray(task.likedBy)
+      ? (task.likedBy as ObjectId[])
+      : [];
 
     let newLikedBy: ObjectId[];
 
@@ -464,12 +463,8 @@ export const postTaskComment = async (req: AuthRequest, res: Response) => {
   }
 };
 
-
 // REPLY TO COMMENT
-export const replyTaskComment = async (
-  req: AuthRequest,
-  res: Response
-) => {
+export const replyTaskComment = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return sendError(res, "Unauthorized");
 
@@ -523,12 +518,8 @@ export const replyTaskComment = async (
   }
 };
 
-
 // GET TASK COMMENTS
-export const getTaskComments = async (
-  req: AuthRequest,
-  res: Response
-) => {
+export const getTaskComments = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
@@ -547,7 +538,9 @@ export const getTaskComments = async (
     if (!task.userId.equals(user._id)) {
       return res
         .status(403)
-        .json({ message: "Forbidden: You can only view your own task comments." });
+        .json({
+          message: "Forbidden: You can only view your own task comments.",
+        });
     }
 
     res.status(200).json({ comments: task.comments || [] });
@@ -557,11 +550,9 @@ export const getTaskComments = async (
   }
 };
 
-
 // GET TASKS CREATED BY THE LOGGED-IN USER
 export const getMyTasks = async (req: AuthRequest, res: Response) => {
   try {
-
     const user = req.user;
     if (!user) return sendError(res, "Unauthorized");
 
@@ -570,25 +561,23 @@ export const getMyTasks = async (req: AuthRequest, res: Response) => {
     // Fetch all tasks created by this user
     //  user's ID
     const baseQuery = { userId: user._id };
-    
-    // fetching all data initially to support the client-side sorting and filtering logic below.
-    const tasksArray = (await tasksCol
-      .find(baseQuery)
-      .toArray()) as Todo[];
 
-    //  Sort newest first 
+    // fetching all data initially to support the client-side sorting and filtering logic below.
+    const tasksArray = (await tasksCol.find(baseQuery).toArray()) as Todo[];
+
+    //  Sort newest first
     tasksArray.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    //  Parse query parameters 
+    //  Parse query parameters
     const queryParams = req.query;
 
     const page = Math.max(1, parseInt(queryParams.page?.toString() || "1"));
     const limit = Math.max(1, parseInt(queryParams.limit?.toString() || "10"));
 
-    //  Apply filters 
+    //  Apply filters
     let filteredTasks = [...tasksArray];
 
     for (const key in queryParams) {
@@ -610,12 +599,9 @@ export const getMyTasks = async (req: AuthRequest, res: Response) => {
             task.labels.map((l) => l.toLowerCase()).includes(value)
         );
       } else if (key === "status") {
-      
-          filteredTasks = filteredTasks.filter((task) => task.status === value);
-    
+        filteredTasks = filteredTasks.filter((task) => task.status === value);
       } else if (key === "priority") {
-      
-          filteredTasks = filteredTasks.filter((task) => task.priority === value);
+        filteredTasks = filteredTasks.filter((task) => task.priority === value);
         // }
       } else if (key === "completed") {
         const isCompleted = value === "true";
@@ -653,16 +639,15 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
     if (!user) return sendError(res, "Unauthorized");
 
     // Comment ID from route parameters
-    const commentIdStr = req.params.commentId; 
+    const commentIdStr = req.params.commentId;
 
-  
     if (!ObjectId.isValid(commentIdStr))
       return sendError(res, "Invalid comment ID");
 
     const tasksCol = getTasksCollection();
     const commentObjectId = new ObjectId(commentIdStr);
 
-    // Find the task containing the comment 
+    // Find the task containing the comment
     const task = await tasksCol.findOne({
       "comments._id": commentObjectId,
     });
@@ -712,10 +697,10 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
       }
     );
 
-    // Update 'likes' and 'liked' properties 
+    // Update 'likes' and 'liked' properties
     comment.likedBy = newLikedBy;
     comment.likes = newLikedBy.length;
-    comment.liked = liked; 
+    comment.liked = liked;
 
     // Send response
     res.status(200).json({
@@ -728,7 +713,6 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
   }
 };
 
-
 // LIKE/UNLIKE A REPLY
 export async function likeReply(req: AuthRequest, res: Response) {
   try {
@@ -736,7 +720,7 @@ export async function likeReply(req: AuthRequest, res: Response) {
     if (!user) return sendError(res, "Unauthorized");
 
     // Get ID from route parameters
-    const replyIdStr = req.params.replyId; 
+    const replyIdStr = req.params.replyId;
     const replyObjectId = new ObjectId(replyIdStr);
 
     if (!ObjectId.isValid(replyIdStr))
@@ -758,7 +742,7 @@ export async function likeReply(req: AuthRequest, res: Response) {
       );
     }
 
-    // Find the specific comment containing the reply 
+    // Find the specific comment containing the reply
     const comment = task.comments.find((c: Comment) =>
       c.replies.some((r: Reply) => r._id?.equals(replyObjectId))
     );
@@ -802,10 +786,10 @@ export async function likeReply(req: AuthRequest, res: Response) {
       { arrayFilters: [{ "r._id": replyObjectId }] }
     );
 
-    // Update 'likes' and 'liked' properties 
+    // Update 'likes' and 'liked' properties
     reply.likes = newLikedBy.length;
-    (reply.likedBy as ObjectId[]) = newLikedBy; 
-    
+    (reply.likedBy as ObjectId[]) = newLikedBy;
+
     // Send response
     res.status(200).json({
       message: liked ? "Reply liked!" : "Reply unliked!",
@@ -814,5 +798,96 @@ export async function likeReply(req: AuthRequest, res: Response) {
   } catch (err) {
     console.error(err);
     sendError(res, "Server error");
+  }
+}
+
+// Delete a comment or reply
+export async function deleteCommentOrReply(req: AuthRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user || !user._id) return sendError(res, "Unauthorized");
+
+    // Extracting ID from URL
+
+    const idStr = req.params.id;
+
+    //  replyId parameter, we treat it as a reply deletion.
+    const isReply = !!req.params.replyId;
+
+    if (!ObjectId.isValid(idStr)) return sendError(res, "Invalid ID");
+
+    // Use the ID specific to the entity being deleted
+    const targetId = new ObjectId(idStr);
+    const ownerId = new ObjectId(user._id);
+
+    const tasksCol = getTasksCollection();
+
+    // Determine the query to find the parent task based on the entity ID
+    const taskFindQuery = isReply
+      ? { "comments.replies._id": targetId }
+      : { "comments._id": targetId };
+
+    const task = await tasksCol.findOne(taskFindQuery, {
+      projection: { userId: 1 },
+    });
+
+    if (!task)
+      return sendError(res, isReply ? "Reply not found" : "Comment not found");
+
+    // Only the task owner can delete comments/replies on their task.
+    if (!task.userId.equals(user._id!)) {
+      const type = isReply ? "replies" : "comments";
+      const errorMessage = `Forbidden: Only the task owner can delete ${type} on this task.`;
+      return sendError(res, errorMessage);
+    }
+
+    // (Reply Deletion)
+    if (isReply) {
+      const replyUpdateResult = await tasksCol.updateOne(
+        // Query to find the task that contains the reply ID
+        {
+          "comments.replies._id": targetId,
+          
+        },
+        {
+          // $pull the reply based on its ID
+          $pull: {
+            "comments.$[].replies": {
+              _id: targetId,
+            } as any,
+          },
+        }
+      );
+
+      if (replyUpdateResult.modifiedCount > 0) {
+        res.status(204).end();
+      }
+      return sendError(res, "Reply not found or forbidden to delete");
+    }
+    // (Comment Deletion)
+    else {
+      const commentUpdateResult = await tasksCol.updateOne(
+        // Query to find the task that contains the comment ID
+        {
+          "comments._id": targetId,
+        },
+        {
+          // $pull the comment based on its ID
+          $pull: {
+            comments: {
+              _id: targetId,
+            } as any,
+          },
+        }
+      );
+
+      if (commentUpdateResult.modifiedCount > 0) {
+        res.status(204).end(); // 204 No Content for successful delete
+      }
+      return sendError(res, "Comment not found or forbidden to delete");
+    }
+  } catch (err) {
+    console.error(err);
+    return sendError(res, "Internal Server Error");
   }
 }
