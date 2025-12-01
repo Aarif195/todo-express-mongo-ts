@@ -286,3 +286,44 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
   }
 };
 
+
+// DELETE TASK
+export const deleteTask = async (req: AuthRequest, res: Response) => {
+  try {
+   
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const taskIdStr = req.params.id; 
+
+    if (!ObjectId.isValid(taskIdStr)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+    const taskId = new ObjectId(taskIdStr);
+
+    const tasksCol = getTasksCollection();
+
+    const task = await tasksCol.findOne({ _id: taskId });
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    // Check ownership
+    if (!task.userId.equals(user._id!)) {
+      return res.status(403).json({
+        message: "Forbidden: You can only delete your own tasks",
+      });
+    }
+
+    // Delete task
+    await tasksCol.deleteOne({ _id: taskId });
+
+    res.status(204).end();
+
+  } catch (err) {
+  
+    res.status(500).json({ message: "Server error" });
+  }
+};

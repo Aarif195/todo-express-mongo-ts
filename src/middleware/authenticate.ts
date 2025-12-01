@@ -17,7 +17,6 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     return res.status(401).json({ message: "Unauthorized" });
   }
   
-
   const token = parts[1];
 
   try {
