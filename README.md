@@ -1,10 +1,10 @@
-# 🏷️ Todo Task Management API
+#  Todo Task Management API
 
 A robust, secure, and scalable RESTful API for managing personal and collaborative to-do tasks.
 
 Built using **Express**, **TypeScript**, and **MongoDB**
 
-## ✨ Key Features
+##  Key Features
 
 * **User Authentication:** Secure sign-up, sign-in using Bearer Tokens.
 * **CRUD Operations:** Complete management of user-specific tasks (Create, Read, Update, Delete).
@@ -12,7 +12,7 @@ Built using **Express**, **TypeScript**, and **MongoDB**
 * **Nested Resources:** Management of comments and replies within tasks.
 * **Interaction Endpoints:** Ability to like/unlike tasks, comments, and replies (owner restricted).
 
-## 🛠️ Prerequisites
+## Prerequisites
 
 Ensure you have the following installed:
 
