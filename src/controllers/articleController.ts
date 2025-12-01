@@ -1,5 +1,4 @@
 import express, { Request, Response } from "express";
-import { authenticate } from "../middleware/authenticate";
 import { Todo, Reply, Comment, User } from "../types/todo";
 import { ObjectId } from "mongodb";
 import {
@@ -338,10 +337,10 @@ export const likeTask = async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    // Task ID from route parameters, assuming route is /tasks/:id/like
+    // Task ID from route parameters
     const taskIdStr = req.params.id; 
 
-    // Assuming ObjectId is available globally or imported elsewhere
+    //  ObjectId 
     if (!ObjectId.isValid(taskIdStr)) {
       sendError(res, "Invalid task ID");
       return;
@@ -401,5 +400,66 @@ export const likeTask = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error(err);
     sendError(res, "Server error");
+  }
+};
+
+// ADD COMMENT
+export const postTaskComment = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const taskIdStr = req.params.id;
+    if (!ObjectId.isValid(taskIdStr)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const { text } = req.body;
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ message: "Comment cannot be empty" });
+    }
+
+    const tasksCol = getTasksCollection();
+    const task = await tasksCol.findOne({ _id: new ObjectId(taskIdStr) });
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // Ownership check
+    if (!task.userId.equals(user._id)) {
+      return res
+        .status(403)
+        .json({ message: "Forbidden: Only the task owner can add comments." });
+    }
+
+    const newComment: Comment = {
+      _id: new ObjectId(),
+      userId: user._id!,
+      username: user.username,
+      text: text.trim(),
+      replies: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedComments = Array.isArray(task.comments)
+      ? [...task.comments, newComment]
+      : [newComment];
+
+    await tasksCol.updateOne(
+      { _id: new ObjectId(taskIdStr) },
+      {
+        $set: {
+          comments: updatedComments,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    );
+
+    return res.status(201).json({
+      message: "Comment added successfully",
+      comment: newComment,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
