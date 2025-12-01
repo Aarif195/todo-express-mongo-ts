@@ -645,3 +645,85 @@ export const getMyTasks = async (req: AuthRequest, res: Response) => {
     sendError(res, "Server error");
   }
 };
+
+// LIKE/UNLIKE A COMMENT
+export const likeComment = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) return sendError(res, "Unauthorized");
+
+    // Comment ID from route parameters
+    const commentIdStr = req.params.commentId; 
+
+  
+    if (!ObjectId.isValid(commentIdStr))
+      return sendError(res, "Invalid comment ID");
+
+    const tasksCol = getTasksCollection();
+    const commentObjectId = new ObjectId(commentIdStr);
+
+    // Find the task containing the comment 
+    const task = await tasksCol.findOne({
+      "comments._id": commentObjectId,
+    });
+
+    if (!task) return sendError(res, "Comment not found");
+
+    // Check ownership
+    if (!task.userId.equals(user._id!)) {
+      return sendError(res, "Forbidden: Only the task owner can like comment");
+    }
+
+    // Find the specific comment object within the task (client-side)
+    const comment = task.comments.find((c: Comment) =>
+      c._id?.equals(commentObjectId)
+    );
+
+    if (!comment) return sendError(res, "Comment not found");
+
+    // Toggle like
+    let liked = false;
+    // Ensure likedBy array exists on the comment document
+    const likedBy: ObjectId[] = Array.isArray(comment.likedBy)
+      ? (comment.likedBy as ObjectId[])
+      : [];
+
+    let newLikedBy: ObjectId[];
+
+    if (likedBy.some((id) => id.equals(user._id!))) {
+      // Unlike
+      newLikedBy = likedBy.filter((id) => !id.equals(user._id!));
+      liked = false;
+    } else {
+      // Like
+      newLikedBy = [...likedBy, user._id!];
+      liked = true;
+    }
+
+    // Update the comment's likedBy and likes in MongoDB using positional operator ($)
+    await tasksCol.updateOne(
+      { "comments._id": commentObjectId },
+      {
+        $set: {
+          "comments.$.likedBy": newLikedBy,
+          "comments.$.likes": newLikedBy.length,
+          "comments.$.updatedAt": new Date().toISOString(),
+        },
+      }
+    );
+
+    // Update 'likes' and 'liked' properties 
+    comment.likedBy = newLikedBy;
+    comment.likes = newLikedBy.length;
+    comment.liked = liked; 
+
+    // Send response
+    res.status(200).json({
+      message: liked ? "Comment liked!" : "Comment unliked!",
+      comment,
+    });
+  } catch (err) {
+    console.error(err);
+    sendError(res, "Server error");
+  }
+};
