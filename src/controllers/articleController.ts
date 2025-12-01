@@ -327,3 +327,79 @@ export const deleteTask = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// LIKE TODO TASK
+export const likeTask = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    // Task ID from route parameters, assuming route is /tasks/:id/like
+    const taskIdStr = req.params.id; 
+
+    // Assuming ObjectId is available globally or imported elsewhere
+    if (!ObjectId.isValid(taskIdStr)) {
+      sendError(res, "Invalid task ID");
+      return;
+    }
+    const taskId = new ObjectId(taskIdStr);
+
+    const tasksCol = getTasksCollection();
+    const task = await tasksCol.findOne({ _id: taskId });
+
+    if (!task) {
+      res.status(404).json({ message: "Task not found" });
+      return;
+    }
+
+    // Check ownership
+    if (!task.userId.equals(user._id!)) {
+      res.status(403).json({
+        message: "Forbidden: You can only like your own tasks",
+      });
+      return;
+    }
+
+    // Toggle like
+    let message = "";
+    let liked = false;
+    const likedBy: ObjectId[] = Array.isArray(task.likedBy) ? (task.likedBy as ObjectId[]) : [];
+
+    let newLikedBy: ObjectId[];
+
+    if (likedBy.some((id: ObjectId) => id.equals(user._id!))) {
+      // User already liked → unlike
+      newLikedBy = likedBy.filter((id: ObjectId) => !id.equals(user._id!));
+      message = "Task unliked!";
+      liked = false;
+    } else {
+      // Like
+      newLikedBy = [...likedBy, user._id!];
+      message = "Task liked!";
+      liked = true;
+    }
+
+    await tasksCol.updateOne(
+      { _id: taskId },
+      { $set: { likedBy: newLikedBy, likesCount: newLikedBy.length } }
+    );
+
+    // Send response
+    res.status(200).json({
+      message,
+      task: {
+        ...task,
+        likedBy: newLikedBy,
+        likesCount: newLikedBy.length,
+        liked,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    sendError(res, "Server error");
+  }
+};
