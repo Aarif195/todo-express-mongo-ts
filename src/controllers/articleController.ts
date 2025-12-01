@@ -727,3 +727,92 @@ export const likeComment = async (req: AuthRequest, res: Response) => {
     sendError(res, "Server error");
   }
 };
+
+
+// LIKE/UNLIKE A REPLY
+export async function likeReply(req: AuthRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return sendError(res, "Unauthorized");
+
+    // Get ID from route parameters
+    const replyIdStr = req.params.replyId; 
+    const replyObjectId = new ObjectId(replyIdStr);
+
+    if (!ObjectId.isValid(replyIdStr))
+      return sendError(res, "Invalid reply ID");
+
+    const tasksCol = getTasksCollection();
+
+    // Find the task containing the reply
+    const task = await tasksCol.findOne({
+      "comments.replies._id": replyObjectId,
+    });
+    if (!task) return sendError(res, "Reply not found");
+
+    // Check ownership
+    if (!task.userId.equals(user._id!)) {
+      return sendError(
+        res,
+        "Forbidden: Only the task owner can like reply's comment."
+      );
+    }
+
+    // Find the specific comment containing the reply 
+    const comment = task.comments.find((c: Comment) =>
+      c.replies.some((r: Reply) => r._id?.equals(replyObjectId))
+    );
+    if (!comment) return sendError(res, "Reply not found in any comment");
+
+    // Find the reply object (client-side)
+    const reply = comment.replies.find((r: Reply) =>
+      r._id?.equals(replyObjectId)
+    );
+    if (!reply) return sendError(res, "Reply not found");
+
+    // Toggle like for reply
+    let liked = false;
+    // Ensure likedBy array exists on the reply document
+    const likedBy: ObjectId[] = Array.isArray(reply.likedBy)
+      ? (reply.likedBy as ObjectId[])
+      : [];
+
+    let newLikedBy: ObjectId[];
+
+    if (likedBy.some((id) => id.equals(user._id!))) {
+      // Unlike
+      newLikedBy = likedBy.filter((id) => !id.equals(user._id!));
+      liked = false;
+    } else {
+      // Like
+      newLikedBy = [...likedBy, user._id!];
+      liked = true;
+    }
+
+    // Update the reply's likedBy and likes in MongoDB using array filters
+    await tasksCol.updateOne(
+      { "comments.replies._id": replyObjectId },
+      {
+        $set: {
+          "comments.$[].replies.$[r].likedBy": newLikedBy,
+          "comments.$[].replies.$[r].likes": newLikedBy.length,
+        },
+      },
+      // Array filter 'r' targets the specific reply ID
+      { arrayFilters: [{ "r._id": replyObjectId }] }
+    );
+
+    // Update 'likes' and 'liked' properties 
+    reply.likes = newLikedBy.length;
+    (reply.likedBy as ObjectId[]) = newLikedBy; 
+    
+    // Send response
+    res.status(200).json({
+      message: liked ? "Reply liked!" : "Reply unliked!",
+      reply: { ...reply, liked },
+    });
+  } catch (err) {
+    console.error(err);
+    sendError(res, "Server error");
+  }
+}

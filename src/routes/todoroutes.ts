@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { authenticate } from "../middleware/authenticate";
 import { upload } from "../middleware/upload";
 
-import { createTask, getTasks, getTaskById, updateTask, deleteTask , likeTask, postTaskComment, replyTaskComment, getTaskComments, getMyTasks, likeComment} from "../controllers/articleController";
+import { createTask, getTasks, getTaskById, updateTask, deleteTask , likeTask, postTaskComment, replyTaskComment, getTaskComments, getMyTasks, likeComment, likeReply} from "../controllers/articleController";
 
 const router = express.Router();
 
@@ -17,6 +17,7 @@ router.post('/:id/comment', authenticate, postTaskComment);
 router.post("/comments/:commentId/reply", authenticate, replyTaskComment);
 router.get('/:id/comments', authenticate, getTaskComments);
 router.post('/:taskId/comments/:commentId/like', authenticate, likeComment);
+router.post('/:taskId/comments/:commentId/replies/:replyId/like', authenticate, likeReply);
 
 
 export default router;
