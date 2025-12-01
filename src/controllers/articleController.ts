@@ -536,11 +536,9 @@ export const getTaskComments = async (req: AuthRequest, res: Response) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     if (!task.userId.equals(user._id)) {
-      return res
-        .status(403)
-        .json({
-          message: "Forbidden: You can only view your own task comments.",
-        });
+      return res.status(403).json({
+        message: "Forbidden: You can only view your own task comments.",
+      });
     }
 
     res.status(200).json({ comments: task.comments || [] });
@@ -812,7 +810,8 @@ export async function deleteCommentOrReply(req: AuthRequest, res: Response) {
     const idStr = req.params.id;
 
     //  replyId parameter, we treat it as a reply deletion.
-    const isReply = !!req.params.replyId;
+    // const isReply = !!req.params.replyId;
+    const isReply = req.originalUrl.includes("replies");
 
     if (!ObjectId.isValid(idStr)) return sendError(res, "Invalid ID");
 
@@ -847,7 +846,6 @@ export async function deleteCommentOrReply(req: AuthRequest, res: Response) {
         // Query to find the task that contains the reply ID
         {
           "comments.replies._id": targetId,
-          
         },
         {
           // $pull the reply based on its ID

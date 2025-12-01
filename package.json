@@ -6,10 +6,17 @@
     "start": "ts-node src/server.ts",
     "dev": "nodemon src/server.ts"
   },
-  "keywords": [],
+  "keywords": [
+    "express",
+    "mongodb",
+    "typescript",
+    "mongoose",
+    "todo",
+    "rest-api"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "A RESTful API for managing user tasks, built with Express, MongoDB, and TypeScript.",
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/multer": "^2.0.0",
