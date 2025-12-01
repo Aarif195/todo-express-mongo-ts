@@ -211,3 +211,78 @@ export const getTaskById = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// UPDATE
+export const updateTask = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const taskId = req.params.id;
+    let updatedData: Partial<
+      Pick<Todo, "title" | "description" | "status" | "priority" | "labels">
+    > = req.body;
+
+    const tasksCol = getTasksCollection();
+    const task = await tasksCol.findOne({ _id: new ObjectId(taskId) });
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (!task.userId.equals(user._id)) {
+      return res.status(403).json({
+        message: "Forbidden: You can only update your own tasks",
+      });
+    }
+
+    // VALIDATIONS
+    const { title, description, status, priority, labels } = updatedData;
+    if (title !== undefined && title.trim() === "")
+      return sendError(res, "Title cannot be empty");
+    if (description !== undefined && description.trim() === "")
+      return sendError(res, "Description cannot be empty");
+     if (priority !== undefined && priority.trim() === "")
+  return sendError(res, "Priority cannot be empty");
+    if (priority && !allowedPriorities.includes(priority.toLowerCase()))
+      return sendError(res, "Invalid priority");
+    if (status !== undefined && status.trim() === "")
+  return sendError(res, "Status cannot be empty");
+    if (status && !allowedStatuses.includes(status.toLowerCase()))
+      return sendError(res, "Invalid status");
+   
+    if (
+      labels &&
+      (!Array.isArray(labels) ||
+        labels.some((l) => !allowedLabels.includes(l.toLowerCase())))
+    )
+      return sendError(res, "Invalid labels");
+
+
+      // To make Update to the fields
+    const updatePayload: Partial<Todo> = {
+      title: title !== undefined ? title.trim() : task.title,
+      description:
+        description !== undefined ? description.trim() : task.description,
+      status: status ? (status.toLowerCase() as Todo["status"]) : task.status,
+      priority: priority
+        ? (priority.toLowerCase() as Todo["priority"])
+        : task.priority,
+      labels: labels ? labels.map((l) => l.toLowerCase()) : task.labels,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await tasksCol.updateOne({ _id: new ObjectId(taskId) }, { $set: updatePayload });
+
+    res.status(200).json({
+      message: "Task updated successfully",
+      updatedTask: { ...task, ...updatePayload },
+    });
+  } catch (err) {
+    console.error(err);
+    sendError(res, "Server error");
+  }
+};
+
