@@ -522,3 +522,37 @@ export const replyTaskComment = async (
     sendError(res, "Server error");
   }
 };
+
+
+// GET TASK COMMENTS
+export const getTaskComments = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    const tasksCol = getTasksCollection();
+    const task = await tasksCol.findOne({ _id: new ObjectId(id) });
+
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    if (!task.userId.equals(user._id)) {
+      return res
+        .status(403)
+        .json({ message: "Forbidden: You can only view your own task comments." });
+    }
+
+    res.status(200).json({ comments: task.comments || [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
