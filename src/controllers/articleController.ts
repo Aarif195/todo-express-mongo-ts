@@ -463,3 +463,62 @@ export const postTaskComment = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+
+// REPLY TO COMMENT
+export const replyTaskComment = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) return sendError(res, "Unauthorized");
+
+    const { commentId } = req.params;
+
+    if (!ObjectId.isValid(commentId))
+      return sendError(res, "Invalid comment ID");
+
+    const { text } = req.body;
+    if (!text || text.trim() === "")
+      return sendError(res, "Text cannot be empty");
+
+    const tasksCol = getTasksCollection();
+
+    // Find task containing the comment
+    const task = await tasksCol.findOne({
+      "comments._id": new ObjectId(commentId),
+    });
+
+    if (!task) return sendError(res, "Comment not found");
+
+    // Ownership check
+    if (!task.userId.equals(req.user._id!)) {
+      return sendError(
+        res,
+        "Forbidden: Only the task owner can reply to this comment."
+      );
+    }
+
+    const reply: Reply = {
+      _id: new ObjectId(),
+      userId: req.user._id!,
+      username: req.user.username,
+      text: text.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Push reply into the comment replies
+    await tasksCol.updateOne(
+      { "comments._id": new ObjectId(commentId) },
+      { $push: { "comments.$.replies": reply } as any }
+    );
+
+    res.status(200).json({
+      message: "Reply added successfully",
+      reply,
+    });
+  } catch (err) {
+    console.error(err);
+    sendError(res, "Server error");
+  }
+};
